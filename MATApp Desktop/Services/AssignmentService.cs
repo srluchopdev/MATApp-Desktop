@@ -1,9 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace MATAppDesktop.Services
 {
     public class AssignmentService
     {
+        public string Name { get; set; }
+        public DateTime DueDate { get; set; }
+        public string Description { get; set; }
         private Dictionary<string, string> _assignments;
 
         public AssignmentService()
@@ -35,12 +39,28 @@ namespace MATAppDesktop.Services
 
         public void SaveAssignments(string filePath)
         {
-            // Lógica para guardar las asignaciones en un archivo (JSON, CSV, etc.)
+            // Serializar la lista de asignaciones a un string JSON
+            string json = JsonConvert.SerializeObject(_assignments, Formatting.Indented);
+
+            // Escribir el JSON en un archivo
+            File.WriteAllText(filePath, json);
         }
 
         public void LoadAssignments(string filePath)
         {
-            // Lógica para cargar las asignaciones desde un archivo
+            try
+            {
+                // Leer el contenido del archivo JSON
+                string json = File.ReadAllText(filePath);
+
+                // Deserializar el JSON en un diccionario
+                _assignments = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error al cargar asignaciones: " + ex.Message);
+                // Manejar el error de forma adecuada (por ejemplo, mostrar un mensaje al usuario)
+            }
         }
     }
 }

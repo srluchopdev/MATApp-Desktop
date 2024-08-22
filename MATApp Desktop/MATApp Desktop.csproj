@@ -7,7 +7,12 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <StartupObject>MATApp_Desktop.Program</StartupObject>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'" />
 
   <ItemGroup>
     <PackageReference Include="CoreOSC" Version="1.0.0" />

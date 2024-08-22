@@ -40,7 +40,7 @@
             btnAssign.Name = "btnAssign";
             btnAssign.Size = new Size(290, 29);
             btnAssign.TabIndex = 0;
-            btnAssign.Text = "button1";
+            btnAssign.Text = "asignar colliders a tracker\r\n";
             btnAssign.UseVisualStyleBackColor = true;
             btnAssign.Click += btnAssign_Click;
             // 

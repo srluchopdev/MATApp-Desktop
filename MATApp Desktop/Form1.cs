@@ -20,6 +20,8 @@ namespace MATApp_Desktop
         {
             InitializeComponent();
             _networkScanner = new NetworkScanner();
+            _oscManager = new OscManager("127.0.0.1", 9000);
+
             LoadAvailableIPs();
             LoadColliders();
             LoadAssignments();
@@ -29,13 +31,36 @@ namespace MATApp_Desktop
         private void LoadAvailableIPs()
         {
             var ips = _networkScanner.ScanNetworkForSlimeVRDevices();
-            cmbIPs.DataSource = ips;
+            if (ips != null && ips.Any())
+            {
+                cmbIPs.DataSource = ips;
+            }
+            else
+            {
+                MessageBox.Show("No se encontraron dispositivos SlimeVR.");
+            }
         }
 
         private void LoadColliders()
         {
-            var colliders = new[] { "pecho", "abdomen", "pelvis", "brazo D", "brazo I", "muslo D", "muslo I", "pierna D", "pierna I", "pie D", "pie I" };
-            lstColliders.Items.AddRange(colliders);
+            // Envía una solicitud OSC para obtener los colliders del avatar
+            _oscManager.SendMessage("/avatar/requestColliders", 1); // 1 es solo un valor de ejemplo para iniciar la solicitud
+
+            // Espera la respuesta y maneja la respuesta en un evento de recepción
+            _oscManager.OnColliderListReceived += OnColliderListReceived;
+        }
+
+        private void OnColliderListReceived(List<string> colliders)
+        {
+            if (colliders != null && colliders.Any())
+            {
+                lstColliders.Items.Clear();
+                lstColliders.Items.AddRange(colliders.ToArray());
+            }
+            else
+            {
+                MessageBox.Show("No se recibieron colliders.");
+            }
         }
 
         private void btnAssign_Click(object sender, EventArgs e)

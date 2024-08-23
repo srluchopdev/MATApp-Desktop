@@ -25,7 +25,12 @@ namespace MATAppDesktop.Services
             _sender = new ManagedUdpSender(_ipAddress, _port);
 
             // Inicializa UdpClient para recibir mensajes
-            _udpClient = new UdpClient(_port);
+            _udpClient = new UdpClient();
+
+            _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+
+            _udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, _port));
+
             _udpClient.BeginReceive(OnOscMessageReceived, null);
         }
 

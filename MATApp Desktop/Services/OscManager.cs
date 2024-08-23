@@ -17,20 +17,26 @@ namespace MATAppDesktop.Services
         private readonly int _port;
         private ManagedUdpSender _sender;
         private UdpClient _udpClient;
+        private IPEndPoint _localEndPoint;
 
         public OscManager(string ipAddress, int port)
         {
             _ipAddress = ipAddress;
             _port = port;
-            _sender = new ManagedUdpSender(_ipAddress, _port);
 
-            // Inicializa UdpClient para recibir mensajes
+            // Configuración del punto de enlace local (EndPoint)
+            _localEndPoint = new IPEndPoint(IPAddress.Parse(_ipAddress), _port);
+
+            // Creación del UdpClient
             _udpClient = new UdpClient();
 
+            // Configurar el socket para reutilización de la dirección
             _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
-            _udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, _port));
+            // Asociar el UdpClient al punto de enlace local
+            _udpClient.Client.Bind(_localEndPoint);
 
+            // Comenzar a recibir datos
             _udpClient.BeginReceive(OnOscMessageReceived, null);
         }
 

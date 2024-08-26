@@ -24,31 +24,42 @@ namespace MATAppDesktop.Services
             _ipAddress = ipAddress;
             _port = port;
 
-            // Configuración del punto de enlace local (EndPoint)
-            _localEndPoint = new IPEndPoint(IPAddress.Parse(_ipAddress), _port);
+            // Inicializa el ManagedUdpSender aquí
+            try
+            {
+                _sender = new ManagedUdpSender(_ipAddress, _port);
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine($"Error al crear ManagedUdpSender: {ex.Message}");
+                // Maneja adecuadamente la excepción de creación del socket
+            }
 
-            // Creación del UdpClient
-            _udpClient = new UdpClient();
-
-            // Configurar el socket para reutilización de la dirección
-            _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-
-            // Asociar el UdpClient al punto de enlace local
-            _udpClient.Client.Bind(_localEndPoint);
-
-            // Comenzar a recibir datos
-            _udpClient.BeginReceive(OnOscMessageReceived, null);
+            // Solo continúa si _sender fue inicializado correctamente
+            if (_sender != null)
+            {
+                _udpClient = new UdpClient(_port);
+                _udpClient.BeginReceive(OnOscMessageReceived, null);
+            }
+            else
+            {
+                Console.WriteLine("El ManagedUdpSender no pudo ser inicializado.");
+            }
         }
 
         public Action<List<string>> OnColliderListReceived { get; internal set; }
 
         public void SendMessage(string address, params object[] args)
         {
-            // Create a custom data structure to encapsulate address and data
-            var messageData = new MyMessageData { MessageAddress = address, MessageData = args };
-
-            // Assuming CoreOSC provides a method to send messages with custom data
-            _sender.Send(messageData); // Replace with the appropriate method from CoreOSC
+            if (_sender != null)
+            {
+                var messageData = new MyMessageData { MessageAddress = address, MessageData = args };
+                _sender.Send(messageData); // Asegúrate de que _sender no sea null
+            }
+            else
+            {
+                Console.WriteLine("No se puede enviar el mensaje porque _sender es null.");
+            }
         }
 
         public class MyMessageData

@@ -16,6 +16,7 @@ namespace MATApp_Desktop
     {
         private NetworkScanner _networkScanner;
         private OscManager _oscManager;
+
         public Form1()
         {
             InitializeComponent();
@@ -25,7 +26,6 @@ namespace MATApp_Desktop
             LoadAvailableIPs();
             LoadColliders();
             LoadAssignments();
-
         }
 
         private void LoadAvailableIPs()
@@ -65,8 +65,9 @@ namespace MATApp_Desktop
 
         private void btnAssign_Click(object sender, EventArgs e)
         {
-            var selectedIP = cmbIPs.SelectedItem.ToString();
-            var selectedCollider = lstColliders.SelectedItem.ToString();
+            // Verificar que el usuario haya seleccionado una IP y un collider antes de continuar
+            var selectedIP = cmbIPs.SelectedItem?.ToString();
+            var selectedCollider = lstColliders.SelectedItem?.ToString();
 
             if (!string.IsNullOrEmpty(selectedIP) && !string.IsNullOrEmpty(selectedCollider))
             {
@@ -82,7 +83,7 @@ namespace MATApp_Desktop
         private void AssignColliderToIP(string collider, string ip)
         {
             _oscManager = new OscManager(ip, 9000); // 9000 es un puerto de ejemplo, ajusta según sea necesario
-            _oscManager.SendMessage($"/avatar/{collider}/motor", 1); // Envia una señal para activar el motor
+            _oscManager.SendMessage($"/avatar/{collider}/motor", 1); // Envía una señal para activar el motor
         }
 
         private void SaveAssignments()
@@ -108,6 +109,49 @@ namespace MATApp_Desktop
                         lstAssignments.Items.Add(line);
                     }
                 }
+            }
+        }
+
+        private void lstColliders_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void lstAssignments_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void cmbIPs_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        // Método para verificar si los colliders están llegando correctamente
+        private void btnVerifyColliders_Click(object sender, EventArgs e)
+        {
+            if (lstColliders.Items.Count > 0)
+            {
+                // Asegúrate de que el primer ítem no sea nulo antes de convertirlo a string
+                var firstItem = lstColliders.Items[0]?.ToString();
+
+                if (!string.IsNullOrEmpty(firstItem) && firstItem != "[]/avatar/requestColliders[]")
+                {
+                    MessageBox.Show("Los colliders están llegando correctamente.");
+                }
+                else
+                {
+                    MessageBox.Show("Los colliders no están llegando correctamente. Intenta nuevamente.");
+                }
+            }
+            else
+            {
+                MessageBox.Show("La lista de colliders está vacía.");
             }
         }
     }

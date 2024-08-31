@@ -11,8 +11,8 @@ namespace MATAppDesktop.Services
 {
     public class OscManager
     {
-        public string OscAddress { get; set; } // Cambié el nombre para evitar ambigüedad
-        public object[] OscData { get; set; } // Cambié el nombre para evitar ambigüedad
+        public string OscAddress { get; set; }
+        public object[] OscData { get; set; }
         private readonly string _ipAddress;
         private readonly int _port;
         private ManagedUdpSender _sender;
@@ -24,22 +24,32 @@ namespace MATAppDesktop.Services
             _ipAddress = ipAddress;
             _port = port;
 
-            // Inicializa el ManagedUdpSender aquí
             try
             {
+                // Inicializa ManagedUdpSender
                 _sender = new ManagedUdpSender(_ipAddress, _port);
             }
             catch (SocketException ex)
             {
                 Console.WriteLine($"Error al crear ManagedUdpSender: {ex.Message}");
-                // Maneja adecuadamente la excepción de creación del socket
             }
 
-            // Solo continúa si _sender fue inicializado correctamente
             if (_sender != null)
             {
-                _udpClient = new UdpClient(_port);
-                _udpClient.BeginReceive(OnOscMessageReceived, null);
+                try
+                {
+                    // Inicializa UdpClient para recibir mensajes
+                    _localEndPoint = new IPEndPoint(IPAddress.Any, _port);
+                    _udpClient = new UdpClient();
+                    _udpClient.ExclusiveAddressUse = false; // Permitir reutilización del socket
+                    _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                    _udpClient.Client.Bind(_localEndPoint); // Enlazar al puerto
+                    _udpClient.BeginReceive(OnOscMessageReceived, null);
+                }
+                catch (SocketException ex)
+                {
+                    Console.WriteLine($"Error al crear UdpClient: {ex.Message}");
+                }
             }
             else
             {
@@ -54,7 +64,7 @@ namespace MATAppDesktop.Services
             if (_sender != null)
             {
                 var messageData = new MyMessageData { MessageAddress = address, MessageData = args };
-                _sender.Send(messageData); // Asegúrate de que _sender no sea null
+                _sender.Send(messageData);
             }
             else
             {
@@ -67,7 +77,7 @@ namespace MATAppDesktop.Services
             public string MessageAddress { get; set; }
             public object[] MessageData { get; set; }
 
-            public void Write(BinaryWriter writer) // Asegúrate de que este método está definido
+            public void Write(BinaryWriter writer)
             {
                 writer.Write(MessageAddress);
                 foreach (var item in MessageData)
@@ -101,25 +111,39 @@ namespace MATAppDesktop.Services
 
                 // Decodifica el mensaje OSC
                 var message = Encoding.UTF8.GetString(data);
+                Console.WriteLine("Mensaje OSC recibido: " + message); // Log del mensaje recibido
+
+                // Procesar la lista de colliders desde el mensaje
                 var colliders = ParseColliderListFromMessage(message);
 
-                // Llama al evento cuando se reciban los colliders
-                OnColliderListReceived?.Invoke(colliders);
+                // Verifica si la lista de colliders es la esperada
+                if (colliders != null && colliders.Count > 0)
+                {
+                    Console.WriteLine("Colliders recibidos correctamente:");
+                    foreach (var collider in colliders)
+                    {
+                        Console.WriteLine(collider); // Imprime cada collider recibido
+                    }
+                    OnColliderListReceived?.Invoke(colliders); // Invoca la acción con la lista de colliders
+                }
+                else
+                {
+                    Console.WriteLine("No se recibieron colliders o la lista está vacía.");
+                }
 
                 // Continuar recibiendo datos
                 _udpClient.BeginReceive(OnOscMessageReceived, null);
             }
             catch (Exception ex)
             {
-                // Manejar excepciones aquí si es necesario
                 Console.WriteLine($"Error recibiendo datos OSC: {ex.Message}");
             }
         }
 
         private List<string> ParseColliderListFromMessage(string message)
         {
-            // Asume que los colliders están en una lista separada por comas en el mensaje recibido
-            return message.Split(',').ToList();
+            // Supongamos que los colliders están separados por comas
+            return message.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
         }
     }
 }

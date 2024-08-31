@@ -36,7 +36,7 @@
             // 
             // btnAssign
             // 
-            btnAssign.Location = new Point(262, 362);
+            btnAssign.Location = new Point(281, 422);
             btnAssign.Name = "btnAssign";
             btnAssign.Size = new Size(290, 29);
             btnAssign.TabIndex = 0;
@@ -46,41 +46,59 @@
             // 
             // lstColliders
             // 
+            lstColliders.BackColor = Color.DeepSkyBlue;
+            lstColliders.BorderStyle = BorderStyle.FixedSingle;
+            lstColliders.Font = new Font("Segoe UI", 13F);
+            lstColliders.ForeColor = SystemColors.Menu;
             lstColliders.FormattingEnabled = true;
-            lstColliders.ItemHeight = 15;
+            lstColliders.ItemHeight = 23;
             lstColliders.Location = new Point(12, 12);
             lstColliders.Name = "lstColliders";
-            lstColliders.Size = new Size(244, 379);
+            lstColliders.Size = new Size(244, 439);
             lstColliders.TabIndex = 1;
+            lstColliders.SelectedIndexChanged += lstColliders_SelectedIndexChanged;
             // 
             // lstAssignments
             // 
+            lstAssignments.BackColor = Color.DeepSkyBlue;
+            lstAssignments.BorderStyle = BorderStyle.FixedSingle;
+            lstAssignments.Font = new Font("Segoe UI", 13F);
+            lstAssignments.ForeColor = SystemColors.Menu;
             lstAssignments.FormattingEnabled = true;
-            lstAssignments.ItemHeight = 15;
-            lstAssignments.Location = new Point(558, 12);
+            lstAssignments.ItemHeight = 23;
+            lstAssignments.Location = new Point(594, 12);
             lstAssignments.Name = "lstAssignments";
-            lstAssignments.Size = new Size(230, 379);
+            lstAssignments.Size = new Size(230, 439);
             lstAssignments.TabIndex = 2;
+            lstAssignments.SelectedIndexChanged += lstAssignments_SelectedIndexChanged;
             // 
             // cmbIPs
             // 
+            cmbIPs.BackColor = Color.DeepSkyBlue;
+            cmbIPs.Font = new Font("Segoe UI", 13F);
+            cmbIPs.ForeColor = SystemColors.Window;
             cmbIPs.FormattingEnabled = true;
-            cmbIPs.Location = new Point(262, 12);
+            cmbIPs.Location = new Point(281, 12);
             cmbIPs.Name = "cmbIPs";
-            cmbIPs.Size = new Size(290, 23);
+            cmbIPs.Size = new Size(290, 31);
             cmbIPs.TabIndex = 3;
+            cmbIPs.SelectedIndexChanged += cmbIPs_SelectedIndexChanged;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 450);
+            BackColor = Color.Indigo;
+            BackgroundImageLayout = ImageLayout.None;
+            ClientSize = new Size(837, 471);
             Controls.Add(cmbIPs);
             Controls.Add(lstAssignments);
             Controls.Add(lstColliders);
             Controls.Add(btnAssign);
+            FormBorderStyle = FormBorderStyle.FixedToolWindow;
             Name = "Form1";
-            Text = "Form1";
+            Text = "MATApp Descktop";
+            Load += Form1_Load;
             ResumeLayout(false);
         }
 

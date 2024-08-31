@@ -16,12 +16,15 @@ namespace MATApp_Desktop
     {
         private NetworkScanner _networkScanner;
         private OscManager _oscManager;
+        private TextBoxWriter _textBoxWriter;
 
         public Form1()
         {
             InitializeComponent();
             _networkScanner = new NetworkScanner();
             _oscManager = new OscManager("127.0.0.1", 9000);
+            _textBoxWriter = new TextBoxWriter(textBoxLogs);
+            Console.SetOut(_textBoxWriter);
 
             LoadAvailableIPs();
             LoadColliders();
@@ -37,20 +40,33 @@ namespace MATApp_Desktop
             }
             else
             {
-                MessageBox.Show("No se encontraron dispositivos SlimeVR.");
+                LogMessage("No se encontraron dispositivos SlimeVR.");
             }
         }
 
         private void LoadColliders()
         {
-            // Envía una solicitud OSC para obtener los colliders del avatar
-            _oscManager.SendMessage("/avatar/requestColliders", 1); // 1 es solo un valor de ejemplo para iniciar la solicitud
-
-            // Espera la respuesta y maneja la respuesta en un evento de recepción
+            //aca parece que esta el problema despues consultarle a la IA
+            _oscManager.SendMessage("/avatar/requestColliders", 1);
             _oscManager.OnColliderListReceived += OnColliderListReceived;
         }
 
         private void OnColliderListReceived(List<string> colliders)
+        {
+            if (lstColliders.InvokeRequired)
+            {
+                lstColliders.Invoke(new Action(() =>
+                {
+                    UpdateColliderList(colliders);
+                }));
+            }
+            else
+            {
+                UpdateColliderList(colliders);
+            }
+        }
+
+        private void UpdateColliderList(List<string> colliders)
         {
             if (colliders != null && colliders.Any())
             {
@@ -59,13 +75,12 @@ namespace MATApp_Desktop
             }
             else
             {
-                MessageBox.Show("No se recibieron colliders.");
+                LogMessage("No se recibieron colliders.");
             }
         }
 
         private void btnAssign_Click(object sender, EventArgs e)
         {
-            // Verificar que el usuario haya seleccionado una IP y un collider antes de continuar
             var selectedIP = cmbIPs.SelectedItem?.ToString();
             var selectedCollider = lstColliders.SelectedItem?.ToString();
 
@@ -76,14 +91,14 @@ namespace MATApp_Desktop
             }
             else
             {
-                MessageBox.Show("Por favor, selecciona una IP y un collider.");
+                LogMessage("Por favor, selecciona una IP y un collider.");
             }
         }
 
         private void AssignColliderToIP(string collider, string ip)
         {
-            _oscManager = new OscManager(ip, 9000); // 9000 es un puerto de ejemplo, ajusta según sea necesario
-            _oscManager.SendMessage($"/avatar/{collider}/motor", 1); // Envía una señal para activar el motor
+            _oscManager = new OscManager(ip, 9000);
+            _oscManager.SendMessage($"/avatar/{collider}/motor", 1);
         }
 
         private void SaveAssignments()
@@ -132,27 +147,31 @@ namespace MATApp_Desktop
 
         }
 
-        // Método para verificar si los colliders están llegando correctamente
         private void btnVerifyColliders_Click(object sender, EventArgs e)
         {
             if (lstColliders.Items.Count > 0)
             {
-                // Asegúrate de que el primer ítem no sea nulo antes de convertirlo a string
                 var firstItem = lstColliders.Items[0]?.ToString();
 
                 if (!string.IsNullOrEmpty(firstItem) && firstItem != "[]/avatar/requestColliders[]")
                 {
-                    MessageBox.Show("Los colliders están llegando correctamente.");
+                    LogMessage("Los colliders están llegando correctamente.");
                 }
                 else
                 {
-                    MessageBox.Show("Los colliders no están llegando correctamente. Intenta nuevamente.");
+                    LogMessage("Los colliders no están llegando correctamente. Intenta nuevamente.");
                 }
             }
             else
             {
-                MessageBox.Show("La lista de colliders está vacía.");
+                LogMessage("La lista de colliders está vacía.");
             }
+        }
+
+        // Nuevo método para registrar mensajes en el TextBox
+        private void LogMessage(string message)
+        {
+            Console.WriteLine(message);
         }
     }
 }

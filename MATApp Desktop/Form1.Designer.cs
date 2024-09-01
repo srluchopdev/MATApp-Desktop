@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             btnAssign = new Button();
-            lstColliders = new ListBox();
+            listBoxColliders = new ListBox();
             lstAssignments = new ListBox();
             cmbIPs = new ComboBox();
             textBoxLogs = new TextBox();
@@ -48,19 +48,19 @@
             btnAssign.UseVisualStyleBackColor = false;
             btnAssign.Click += btnAssign_Click;
             // 
-            // lstColliders
+            // listBoxColliders
             // 
-            lstColliders.BackColor = Color.Lime;
-            lstColliders.BorderStyle = BorderStyle.FixedSingle;
-            lstColliders.Font = new Font("Segoe UI", 13F);
-            lstColliders.ForeColor = SystemColors.InfoText;
-            lstColliders.FormattingEnabled = true;
-            lstColliders.ItemHeight = 23;
-            lstColliders.Location = new Point(12, 12);
-            lstColliders.Name = "lstColliders";
-            lstColliders.Size = new Size(244, 439);
-            lstColliders.TabIndex = 1;
-            lstColliders.SelectedIndexChanged += lstColliders_SelectedIndexChanged;
+            listBoxColliders.BackColor = Color.Lime;
+            listBoxColliders.BorderStyle = BorderStyle.FixedSingle;
+            listBoxColliders.Font = new Font("Segoe UI", 13F);
+            listBoxColliders.ForeColor = SystemColors.InfoText;
+            listBoxColliders.FormattingEnabled = true;
+            listBoxColliders.ItemHeight = 23;
+            listBoxColliders.Location = new Point(12, 12);
+            listBoxColliders.Name = "listBoxColliders";
+            listBoxColliders.Size = new Size(244, 439);
+            listBoxColliders.TabIndex = 1;
+            listBoxColliders.SelectedIndexChanged += lstColliders_SelectedIndexChanged;
             // 
             // lstAssignments
             // 
@@ -107,7 +107,7 @@
             Controls.Add(textBoxLogs);
             Controls.Add(cmbIPs);
             Controls.Add(lstAssignments);
-            Controls.Add(lstColliders);
+            Controls.Add(listBoxColliders);
             Controls.Add(btnAssign);
             FormBorderStyle = FormBorderStyle.FixedToolWindow;
             Name = "Form1";
@@ -120,7 +120,7 @@
         #endregion
 
         private Button btnAssign;
-        private ListBox lstColliders;
+        private ListBox listBoxColliders;
         private ListBox lstAssignments;
         private ComboBox cmbIPs;
         private TextBox textBoxLogs;

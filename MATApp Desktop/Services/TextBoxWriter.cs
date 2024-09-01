@@ -3,41 +3,65 @@ using System.IO;
 using System.Text;
 using System.Windows.Forms;
 
-public class TextBoxWriter : TextWriter
+namespace MATAppDesktop.Services
 {
-    private TextBox _textBox;
-
-    public TextBoxWriter(TextBox textBox)
+    public class TextBoxWriter : TextWriter
     {
-        _textBox = textBox;
-    }
+        private readonly TextBox _textBox;
 
-    public override void Write(char value)
-    {
-        if (_textBox.InvokeRequired)
+        public TextBoxWriter(TextBox textBox)
         {
-            _textBox.Invoke((MethodInvoker)delegate { _textBox.AppendText(value.ToString()); });
+            _textBox = textBox ?? throw new ArgumentNullException(nameof(textBox));
         }
-        else
-        {
-            _textBox.AppendText(value.ToString());
-        }
-    }
 
-    public override void Write(string value)
-    {
-        if (_textBox.InvokeRequired)
-        {
-            _textBox.Invoke((MethodInvoker)delegate { _textBox.AppendText(value); });
-        }
-        else
-        {
-            _textBox.AppendText(value);
-        }
-    }
+        public override Encoding Encoding => Encoding.UTF8;
 
-    public override Encoding Encoding
-    {
-        get { return Encoding.UTF8; }
+        public override void Write(char value)
+        {
+            // Asegúrate de que la actualización del TextBox se haga en el hilo de la UI
+            if (_textBox.InvokeRequired)
+            {
+                _textBox.Invoke(new Action(() =>
+                {
+                    _textBox.AppendText(value.ToString());
+                }));
+            }
+            else
+            {
+                _textBox.AppendText(value.ToString());
+            }
+        }
+
+        public override void Write(string value)
+        {
+            // Asegúrate de que la actualización del TextBox se haga en el hilo de la UI
+            if (_textBox.InvokeRequired)
+            {
+                _textBox.Invoke(new Action(() =>
+                {
+                    _textBox.AppendText(value ?? string.Empty);
+                }));
+            }
+            else
+            {
+                _textBox.AppendText(value ?? string.Empty);
+            }
+        }
+
+        public override void WriteLine(string value)
+        {
+            // Asegúrate de que la actualización del TextBox se haga en el hilo de la UI
+            if (_textBox.InvokeRequired)
+            {
+                _textBox.Invoke(new Action(() =>
+                {
+                    _textBox.AppendText(value ?? string.Empty + Environment.NewLine);
+                }));
+            }
+            else
+            {
+                _textBox.AppendText(value ?? string.Empty + Environment.NewLine);
+            }
+        }
     }
 }

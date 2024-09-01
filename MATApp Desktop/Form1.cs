@@ -1,19 +1,17 @@
-﻿using MATAppDesktop.Services;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using System.IO;
+using System.Linq;
+using System.Windows.Forms;
+using MATAppDesktop.Services;
 
 namespace MATApp_Desktop
 {
     public partial class Form1 : Form
     {
+        private System.Timers.Timer _oscSendTimer;
+        private bool _formLoaded = false;
         private NetworkScanner _networkScanner;
         private OscManager _oscManager;
         private TextBoxWriter _textBoxWriter;
@@ -21,14 +19,53 @@ namespace MATApp_Desktop
         public Form1()
         {
             InitializeComponent();
+            _formLoaded = true; // Indicamos que el formulario está cargado
+
+            string ipAddress = "127.0.0.1"; // IP donde Unity está enviando los mensajes
+            int port = 9000; // Puerto en el que MATApp escuchará los mensajes OSC
+
             _networkScanner = new NetworkScanner();
-            _oscManager = new OscManager("127.0.0.1", 9000);
+            _oscManager = new OscManager(ipAddress, port, this);
             _textBoxWriter = new TextBoxWriter(textBoxLogs);
             Console.SetOut(_textBoxWriter);
+
+            // Inicialización del temporizador
+            InitializeOscSendTimer();
+
+            this.FormClosing += Form1_FormClosing;
+            _oscManager.OnColliderListReceived += UpdateColliderList;
 
             LoadAvailableIPs();
             LoadColliders();
             LoadAssignments();
+        }
+
+        private void InitializeOscSendTimer()
+        {
+            // Configura y arranca el temporizador para enviar mensajes OSC periódicamente
+            _oscSendTimer = new System.Timers.Timer(1000); // Intervalo de 1 segundo
+            _oscSendTimer.Elapsed += OnTimedEvent;
+            _oscSendTimer.Start();
+        }
+
+        private void UpdateColliderList(List<string> colliders)
+        {
+            if (this.IsHandleCreated)
+            {
+                if (colliders != null && colliders.Any())
+                {
+                    listBoxColliders.Invoke(new Action(() =>
+                    {
+                        listBoxColliders.Items.Clear();
+                        listBoxColliders.Items.AddRange(colliders.ToArray());
+                        _textBoxWriter.WriteLine("Colliders recibidos correctamente: " + string.Join(", ", colliders));
+                    }));
+                }
+                else
+                {
+                    _textBoxWriter.WriteLine("No se recibieron colliders.");
+                }
+            }
         }
 
         private void LoadAvailableIPs()
@@ -40,64 +77,38 @@ namespace MATApp_Desktop
             }
             else
             {
-                LogMessage("No se encontraron dispositivos SlimeVR.");
+                _textBoxWriter.WriteLine("No se encontraron dispositivos SlimeVR.");
             }
         }
 
         private void LoadColliders()
         {
-            //aca parece que esta el problema despues consultarle a la IA
-            _oscManager.SendMessage("/avatar/requestColliders", 1);
-            _oscManager.OnColliderListReceived += OnColliderListReceived;
-        }
-
-        private void OnColliderListReceived(List<string> colliders)
-        {
-            if (lstColliders.InvokeRequired)
-            {
-                lstColliders.Invoke(new Action(() =>
-                {
-                    UpdateColliderList(colliders);
-                }));
-            }
-            else
-            {
-                UpdateColliderList(colliders);
-            }
-        }
-
-        private void UpdateColliderList(List<string> colliders)
-        {
-            if (colliders != null && colliders.Any())
-            {
-                lstColliders.Items.Clear();
-                lstColliders.Items.AddRange(colliders.ToArray());
-            }
-            else
-            {
-                LogMessage("No se recibieron colliders.");
-            }
+            _oscManager.SendMessage("/avatar/requestColliders", 1); // 1 es solo un valor de ejemplo para iniciar la solicitud
         }
 
         private void btnAssign_Click(object sender, EventArgs e)
         {
             var selectedIP = cmbIPs.SelectedItem?.ToString();
-            var selectedCollider = lstColliders.SelectedItem?.ToString();
+            var selectedCollider = listBoxColliders.SelectedItem?.ToString();
 
             if (!string.IsNullOrEmpty(selectedIP) && !string.IsNullOrEmpty(selectedCollider))
             {
                 AssignColliderToIP(selectedCollider, selectedIP);
-                lstAssignments.Items.Add($"{selectedCollider} asignado a {selectedIP}");
+                lstAssignments.Invoke(new Action(() =>
+                {
+                    lstAssignments.Items.Add($"{selectedCollider} asignado a {selectedIP}");
+                }));
+                _textBoxWriter.WriteLine($"{selectedCollider} asignado a {selectedIP}");
             }
             else
             {
-                LogMessage("Por favor, selecciona una IP y un collider.");
+                _textBoxWriter.WriteLine("Por favor, selecciona una IP y un collider.");
             }
         }
 
         private void AssignColliderToIP(string collider, string ip)
         {
-            _oscManager = new OscManager(ip, 9000);
+            _oscManager = new OscManager(ip, 9000, this);
             _oscManager.SendMessage($"/avatar/{collider}/motor", 1);
         }
 
@@ -110,6 +121,7 @@ namespace MATApp_Desktop
                     sw.WriteLine(item.ToString());
                 }
             }
+            _textBoxWriter.WriteLine("Asignaciones guardadas.");
         }
 
         private void LoadAssignments()
@@ -121,57 +133,95 @@ namespace MATApp_Desktop
                     string line;
                     while ((line = sr.ReadLine()) != null)
                     {
-                        lstAssignments.Items.Add(line);
+                        lstAssignments.Invoke(new Action(() =>
+                        {
+                            lstAssignments.Items.Add(line);
+                        }));
                     }
                 }
+                _textBoxWriter.WriteLine("Asignaciones cargadas.");
+            }
+            else
+            {
+                _textBoxWriter.WriteLine("No se encontraron asignaciones para cargar.");
             }
         }
 
-        private void lstColliders_SelectedIndexChanged(object sender, EventArgs e)
-        {
+        private void lstColliders_SelectedIndexChanged(object sender, EventArgs e) { }
 
-        }
+        private void lstAssignments_SelectedIndexChanged(object sender, EventArgs e) { }
 
-        private void lstAssignments_SelectedIndexChanged(object sender, EventArgs e)
-        {
+        private void Form1_Load(object sender, EventArgs e) { }
 
-        }
-
-        private void Form1_Load(object sender, EventArgs e)
-        {
-
-        }
-
-        private void cmbIPs_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
-        }
+        private void cmbIPs_SelectedIndexChanged(object sender, EventArgs e) { }
 
         private void btnVerifyColliders_Click(object sender, EventArgs e)
         {
-            if (lstColliders.Items.Count > 0)
+            if (listBoxColliders.Items.Count > 0)
             {
-                var firstItem = lstColliders.Items[0]?.ToString();
+                var firstItem = listBoxColliders.Items[0]?.ToString();
 
                 if (!string.IsNullOrEmpty(firstItem) && firstItem != "[]/avatar/requestColliders[]")
                 {
-                    LogMessage("Los colliders están llegando correctamente.");
+                    _textBoxWriter.WriteLine("Los colliders están llegando correctamente.");
                 }
                 else
                 {
-                    LogMessage("Los colliders no están llegando correctamente. Intenta nuevamente.");
+                    _textBoxWriter.WriteLine("Los colliders no están llegando correctamente. Intenta nuevamente.");
                 }
             }
             else
             {
-                LogMessage("La lista de colliders está vacía.");
+                _textBoxWriter.WriteLine("La lista de colliders está vacía.");
             }
         }
 
-        // Nuevo método para registrar mensajes en el TextBox
-        private void LogMessage(string message)
+        private void OnTimedEvent(object sender, System.Timers.ElapsedEventArgs e)
         {
-            Console.WriteLine(message);
+            try
+            {
+                // Verifica si hay datos OSC que enviar
+                if (_oscManager != null)
+                {
+                    // Envía un mensaje OSC a Unity
+                    _oscManager.SendMessage("/avatar/requestColliders", 1);
+                }
+
+                // Actualiza la UI
+                AppendTextToLogs("Mensaje OSC enviado a Unity.");
+            }
+            catch (InvalidAsynchronousStateException ex)
+            {
+                Console.WriteLine($"Error invocando el método en el formulario: {ex.Message}");
+            }
+        }
+
+        private void AppendTextToLogs(string text)
+        {
+            if (textBoxLogs.InvokeRequired)
+            {
+                // Invoca al hilo principal de la UI para actualizar el TextBox
+                textBoxLogs.Invoke(new Action(() => textBoxLogs.AppendText(text + Environment.NewLine)));
+            }
+            else
+            {
+                // Si ya estamos en el hilo principal de la UI
+                textBoxLogs.AppendText(text + Environment.NewLine);
+            }
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (_oscSendTimer != null)
+            {
+                _oscSendTimer.Stop();
+                _oscSendTimer.Dispose();
+            }
+
+            if (_oscManager != null)
+            {
+                _oscManager.Dispose();
+            }
         }
     }
 }

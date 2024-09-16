@@ -11,21 +11,38 @@ namespace MATApp_Desktop
     public partial class Form1 : Form
     {
         private System.Timers.Timer _oscSendTimer;
-        private bool _formLoaded = false;
+        private bool _formLoaded = false; // Indicamos que el formulario está cargado
         private NetworkScanner _networkScanner;
         private OscManager _oscManager;
         private TextBoxWriter _textBoxWriter;
+        private List<string> someObject; // Cambio de object a List<string>
 
         public Form1()
         {
             InitializeComponent();
-            _formLoaded = true; // Indicamos que el formulario está cargado
+            this.Shown += Form1_Shown; // Suscribirse al evento Shown
+        }
 
-            string ipAddress = "127.0.0.1"; // IP donde Unity está enviando los mensajes
-            int port = 9000; // Puerto en el que MATApp escuchará los mensajes OSC
+        private void Form1_Shown(object sender, EventArgs e)
+        {
+            _formLoaded = true; // El formulario está completamente cargado
+
+            string ipAddress = "127.0.0.1";
+            int receivePort = 7000;
+            int sendPort = 8000;
+            _oscManager = new OscManager(ipAddress, receivePort, sendPort, this);
+
+            _oscManager.OnColliderListReceived += colliders =>
+            {
+                // Manejar la lista de colliders recibidos
+                _textBoxWriter.WriteLine("Colliders recibidos:");
+                foreach (var collider in colliders)
+                {
+                    _textBoxWriter.WriteLine(collider);
+                }
+            };
 
             _networkScanner = new NetworkScanner();
-            _oscManager = new OscManager(ipAddress, port, this);
             _textBoxWriter = new TextBoxWriter(textBoxLogs);
             Console.SetOut(_textBoxWriter);
 
@@ -40,6 +57,12 @@ namespace MATApp_Desktop
             LoadAssignments();
         }
 
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            base.OnFormClosed(e);
+            _oscManager?.Dispose();
+        }
+
         private void InitializeOscSendTimer()
         {
             // Configura y arranca el temporizador para enviar mensajes OSC periódicamente
@@ -48,9 +71,9 @@ namespace MATApp_Desktop
             _oscSendTimer.Start();
         }
 
-        private void UpdateColliderList(List<string> colliders)
+        private void UpdateColliderList(List<string> colliders) // Cambio de firma a List<string>
         {
-            if (this.IsHandleCreated)
+            if (_formLoaded && this.IsHandleCreated)
             {
                 if (colliders != null && colliders.Any())
                 {
@@ -73,7 +96,13 @@ namespace MATApp_Desktop
             var ips = _networkScanner.ScanNetworkForSlimeVRDevices();
             if (ips != null && ips.Any())
             {
-                cmbIPs.DataSource = ips;
+                if (_formLoaded && this.IsHandleCreated)
+                {
+                    cmbIPs.Invoke(new Action(() =>
+                    {
+                        cmbIPs.DataSource = ips;
+                    }));
+                }
             }
             else
             {
@@ -108,7 +137,6 @@ namespace MATApp_Desktop
 
         private void AssignColliderToIP(string collider, string ip)
         {
-            _oscManager = new OscManager(ip, 9000, this);
             _oscManager.SendMessage($"/avatar/{collider}/motor", 1);
         }
 
@@ -133,10 +161,13 @@ namespace MATApp_Desktop
                     string line;
                     while ((line = sr.ReadLine()) != null)
                     {
-                        lstAssignments.Invoke(new Action(() =>
+                        if (_formLoaded && this.IsHandleCreated)
                         {
-                            lstAssignments.Items.Add(line);
-                        }));
+                            lstAssignments.Invoke(new Action(() =>
+                            {
+                                lstAssignments.Items.Add(line);
+                            }));
+                        }
                     }
                 }
                 _textBoxWriter.WriteLine("Asignaciones cargadas.");
@@ -155,73 +186,17 @@ namespace MATApp_Desktop
 
         private void cmbIPs_SelectedIndexChanged(object sender, EventArgs e) { }
 
-        private void btnVerifyColliders_Click(object sender, EventArgs e)
+        private void textBoxLogs_TextChanged(object sender, EventArgs e) { }
+
+        private void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
         {
-            if (listBoxColliders.Items.Count > 0)
-            {
-                var firstItem = listBoxColliders.Items[0]?.ToString();
-
-                if (!string.IsNullOrEmpty(firstItem) && firstItem != "[]/avatar/requestColliders[]")
-                {
-                    _textBoxWriter.WriteLine("Los colliders están llegando correctamente.");
-                }
-                else
-                {
-                    _textBoxWriter.WriteLine("Los colliders no están llegando correctamente. Intenta nuevamente.");
-                }
-            }
-            else
-            {
-                _textBoxWriter.WriteLine("La lista de colliders está vacía.");
-            }
-        }
-
-        private void OnTimedEvent(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            try
-            {
-                // Verifica si hay datos OSC que enviar
-                if (_oscManager != null)
-                {
-                    // Envía un mensaje OSC a Unity
-                    _oscManager.SendMessage("/avatar/requestColliders", 1);
-                }
-
-                // Actualiza la UI
-                AppendTextToLogs("Mensaje OSC enviado a Unity.");
-            }
-            catch (InvalidAsynchronousStateException ex)
-            {
-                Console.WriteLine($"Error invocando el método en el formulario: {ex.Message}");
-            }
-        }
-
-        private void AppendTextToLogs(string text)
-        {
-            if (textBoxLogs.InvokeRequired)
-            {
-                // Invoca al hilo principal de la UI para actualizar el TextBox
-                textBoxLogs.Invoke(new Action(() => textBoxLogs.AppendText(text + Environment.NewLine)));
-            }
-            else
-            {
-                // Si ya estamos en el hilo principal de la UI
-                textBoxLogs.AppendText(text + Environment.NewLine);
-            }
+            _oscManager.SendMessage("/avatar/requestColliders", 1);
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (_oscSendTimer != null)
-            {
-                _oscSendTimer.Stop();
-                _oscSendTimer.Dispose();
-            }
-
-            if (_oscManager != null)
-            {
-                _oscManager.Dispose();
-            }
+            // Guarda las asignaciones cuando el formulario se cierra
+            SaveAssignments();
         }
     }
 }

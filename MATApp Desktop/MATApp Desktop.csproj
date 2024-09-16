@@ -1,22 +1,26 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <RootNamespace>MATApp_Desktop</RootNamespace>
-    <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <StartupObject>MATApp_Desktop.Program</StartupObject>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<RootNamespace>MATAppDesktop</RootNamespace>
+		<Nullable>enable</Nullable>
+		<UseWindowsForms>true</UseWindowsForms>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<StartupObject>MATAppDesktop.Program</StartupObject>
+	</PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'" />
 
   <ItemGroup>
+    <PackageReference Include="Bespoke-OSC-Library" Version="1.0.0" />
+    <PackageReference Include="Bespoke.Common" Version="1.0.0" />
+    <PackageReference Include="Bespoke.Osc" Version="1.0.0" />
     <PackageReference Include="CoreOSC" Version="1.0.0" />
     <PackageReference Include="Jaeger.Senders.Thrift" Version="1.0.3" />
+    <PackageReference Include="OscCore" Version="1.0.5" />
   </ItemGroup>
 
 </Project>

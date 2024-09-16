@@ -1,204 +1,29 @@
-﻿using CoreOSC;
+﻿using OscCore;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Windows.Forms;
 
 namespace MATAppDesktop.Services
 {
     public class OscManager : IDisposable
     {
-        private System.Timers.Timer _oscSendTimer;
-        public string OscAddress { get; set; }
-        public object[] OscData { get; set; }
-        private readonly string _ipAddress;
-        private readonly int _port;
-        private ManagedUdpSender _sender;
+        private bool _disposed = false; // Para detectar llamadas redundantes
         private UdpClient _udpClient;
-        private IPEndPoint _localEndPoint;
-        private readonly Form _form;
-        private bool _disposed = false;
-        private bool _formLoaded;
+        private IPEndPoint _endPoint;
+        private System.Threading.Timer _timer; // Si estás usando un temporizador
 
-        public OscManager(string ipAddress, int port, Form form)
+        public OscManager(string ipAddress, int port, int sendPort, MATApp_Desktop.Form1 form1)
         {
-            _ipAddress = ipAddress;
-            _port = port;
-            _form = form ?? throw new ArgumentNullException(nameof(form));
-
-            try
-            {
-                // Inicializa ManagedUdpSender
-                _sender = new ManagedUdpSender(_ipAddress, _port);
-            }
-            catch (SocketException ex)
-            {
-                Console.WriteLine($"Error al crear ManagedUdpSender: {ex.Message}");
-            }
-
-            if (_sender != null)
-            {
-                try
-                {
-                    // Inicializa UdpClient para recibir mensajes
-                    _localEndPoint = new IPEndPoint(IPAddress.Any, _port);
-                    _udpClient = new UdpClient();
-                    _udpClient.ExclusiveAddressUse = false;
-                    _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                    _udpClient.Client.Bind(_localEndPoint);
-                    _udpClient.BeginReceive(OnOscMessageReceived, null);
-                }
-                catch (SocketException ex)
-                {
-                    Console.WriteLine($"Error al crear UdpClient: {ex.Message}");
-                }
-            }
-            else
-            {
-                Console.WriteLine("El ManagedUdpSender no pudo ser inicializado.");
-            }
-
-            // Configurar el temporizador para enviar mensajes OSC periódicamente
-            _oscSendTimer = new System.Timers.Timer(1000); // Enviar mensaje cada 1 segundo
-            _oscSendTimer.Elapsed += (sender, e) => SendMessage("/avatar/ping", 1); // Envía un mensaje de ping, por ejemplo
-            _oscSendTimer.Start();
+            _udpClient = new UdpClient();
+            _endPoint = new IPEndPoint(IPAddress.Parse(ipAddress), port);
+            _timer = new System.Threading.Timer(SendPeriodicMessage, null, 0, 1000); // Enviar mensaje cada segundo
         }
 
         public Action<List<string>> OnColliderListReceived { get; internal set; }
 
-        public void SendMessage(string address, params object[] args)
-        {
-            if (_sender != null)
-            {
-                var messageData = new MyMessageData { MessageAddress = address, MessageData = args };
-                _sender.Send(messageData);
-            }
-            else
-            {
-                Console.WriteLine("No se puede enviar el mensaje porque _sender es null.");
-            }
-        }
-
-        public class MyMessageData
-        {
-            public string MessageAddress { get; set; }
-            public object[] MessageData { get; set; }
-
-            public void Write(BinaryWriter writer)
-            {
-                writer.Write(MessageAddress);
-                foreach (var item in MessageData)
-                {
-                    if (item is int intValue)
-                    {
-                        writer.Write(intValue);
-                    }
-                    else if (item is float floatValue)
-                    {
-                        writer.Write(floatValue);
-                    }
-                    else if (item is string strValue)
-                    {
-                        writer.Write(strValue);
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Tipo de dato no soportado.");
-                    }
-                }
-            }
-        }
-
-        private void OnOscMessageReceived(IAsyncResult ar)
-        {
-            if (!_formLoaded)
-            {
-                // Si el formulario no está listo, evitar llamar Invoke
-                return;
-            }
-
-            try
-            {
-                IPEndPoint remoteEP = null;
-                byte[] data = _udpClient.EndReceive(ar, ref remoteEP);
-
-                var message = Encoding.UTF8.GetString(data);
-                Console.WriteLine("Mensaje OSC recibido: " + message);
-
-                var colliders = ParseColliderListFromMessage(message);
-
-                if (colliders != null && colliders.Count > 0)
-                {
-                    try
-                    {
-                        if (_form != null && !_form.IsDisposed && _form.IsHandleCreated)
-                        {
-                            _form.Invoke(new Action(() =>
-                            {
-                                Console.WriteLine("Colliders recibidos correctamente:");
-                                foreach (var collider in colliders)
-                                {
-                                    Console.WriteLine(collider);
-                                }
-                                OnColliderListReceived?.Invoke(colliders);
-                            }));
-                        }
-                    }
-                    catch (InvalidAsynchronousStateException ex)
-                    {
-                        Console.WriteLine($"Error invocando el método en el formulario: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    try
-                    {
-                        if (_form != null && !_form.IsDisposed && _form.IsHandleCreated)
-                        {
-                            _form.Invoke(new Action(() =>
-                            {
-                                Console.WriteLine("No se recibieron colliders o la lista está vacía.");
-                            }));
-                        }
-                    }
-                    catch (InvalidAsynchronousStateException ex)
-                    {
-                        Console.WriteLine($"Error invocando el método en el formulario: {ex.Message}");
-                    }
-                }
-
-                _udpClient.BeginReceive(OnOscMessageReceived, null);
-            }
-            catch (Exception ex)
-            {
-                try
-                {
-                    if (_form != null && !_form.IsDisposed && _form.IsHandleCreated)
-                    {
-                        _form.Invoke(new Action(() =>
-                        {
-                            Console.WriteLine($"Error recibiendo datos OSC: {ex.Message}");
-                        }));
-                    }
-                }
-                catch (InvalidAsynchronousStateException invokeEx)
-                {
-                    Console.WriteLine($"Error invocando el método en el formulario: {invokeEx.Message}");
-                }
-            }
-        }
-
-        private List<string> ParseColliderListFromMessage(string message)
-        {
-            return message.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-        }
-
-        // Implementación de IDisposable
+        // Implementación del método Dispose
         public void Dispose()
         {
             Dispose(true);
@@ -207,19 +32,76 @@ namespace MATAppDesktop.Services
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed)
+            if (_disposed)
+                return;
+
+            if (disposing)
             {
-                if (disposing)
+                // Liberar recursos administrados
+                _udpClient?.Close();
+                _timer?.Dispose();
+            }
+
+            // Liberar recursos no administrados (si hay)
+
+            _disposed = true;
+        }
+
+        ~OscManager()
+        {
+            Dispose(false);
+        }
+
+        private void SendPeriodicMessage(object state)
+        {
+            SendMessage("/avatar/requestColliders", 1); // 1 es solo un valor de ejemplo para iniciar la solicitud
+        }
+
+        public void SendMessage(string address, params object[] args)
+        {
+            var message = new OscMessage(address, args);
+            byte[] data = PackOscMessage(message);
+            _udpClient.Send(data, data.Length, _endPoint);
+        }
+
+        private byte[] PackOscMessage(OscMessage message)
+        {
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var writer = new BinaryWriter(memoryStream))
                 {
-                    // Dispose managed resources
-                    _udpClient?.Close();
-                    _udpClient?.Dispose();
-                    _sender?.Dispose();
+                    writer.Write(message.Address);
+                    writer.Write((byte)',');
+                    foreach (var arg in message)
+                    {
+                        if (arg is int intValue)
+                        {
+                            writer.Write('i');
+                            writer.Write(intValue);
+                        }
+                        else if (arg is float floatValue)
+                        {
+                            writer.Write('f');
+                            writer.Write(floatValue);
+                        }
+                        else if (arg is string stringValue)
+                        {
+                            writer.Write('s');
+                            writer.Write(stringValue);
+                        }
+                        else if (arg is byte[] blobValue)
+                        {
+                            writer.Write('b');
+                            writer.Write(blobValue.Length);
+                            writer.Write(blobValue);
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Tipo de argumento OSC no soportado.");
+                        }
+                    }
                 }
-
-                // Dispose unmanaged resources
-
-                _disposed = true;
+                return memoryStream.ToArray();
             }
         }
     }
